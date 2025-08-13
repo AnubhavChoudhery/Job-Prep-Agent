@@ -38,7 +38,7 @@ def get_linkedin_jobs(role, location):
         print(f"Error: {e}")
         return []
 
-def get_jd(url: str):
+def get_jd(url, WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID):
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -49,7 +49,7 @@ def get_jd(url: str):
     soup = BeautifulSoup(response.content, 'html.parser')
     job_text = soup.get_text()
     job_text = re.sub(r'[ \t]+', ' ', job_text).strip()
-    model = init_model()
+    model = init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID)
     summary_result = llm_json(model, SUMMARIZE_JD_PROMPT, job_text, max_tokens=2000)
     
     summary = summary_result.get("summary", "Could not generate summary.")
