@@ -80,7 +80,7 @@ if __name__ == "__main__":
         summaries = []
         for job in jobs:
             if job.get('job_link'):
-                summaries.append(get_jd(job['job_link']))
+                summaries.append(get_jd(job['job_link'], WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID))
         print(summaries)
     else:
         print("No jobs found")
