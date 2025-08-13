@@ -1,10 +1,7 @@
-import os, re, json
+import os, re, json, glob
 from pathlib import Path
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template
 import fitz  # PyMuPDF
-from rapidfuzz import fuzz, process
-from spreadsheet import SpreadsheetAgent
 
 # watsonx.ai
 from ibm_watsonx_ai import Credentials
@@ -19,39 +16,55 @@ WATSONX_URL = os.getenv("WATSONX_URL")
 WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID")
 WATSONX_MODEL_ID = os.getenv("WATSONX_MODEL_ID")
 
-MAX_PDF_BYTES = 5 * 1024 * 1024  # 5 MB
-ALLOWED_MIME = {"application/pdf"}
+# ---------- Job Description ----------
+# PASTE YOUR JOB DESCRIPTION HERE
+JOB_DESCRIPTION = """
+Qualifications:
+Pursuing a bachelor's or master's degree in computer science, engineering, or another related field. Must graduate before July 2027.
+
+Previous internship experience.
+
+Working towards a proficiency of one or more programming languages such as Typescript, Node.js, or Python.
+
+You find large challenges exciting and enjoy discovering problems as much as solving them.
+
+You are able to problem-solve and adapt to changing priorities in a fast-paced, dynamic environment.
+
+This internship will take place from May - September (based on your summer schedule) and you will need to be able to work out of our NY or SF office during this time.
+
+Skills You'll Need To Bring:
+Thoughtful problem-solving: For you, problem-solving starts with a clear and accurate understanding of the context. You can decompose tricky problems and work towards a clean solution, by yourself or with teammates. You're comfortable asking for help when you get stuck.
+
+AI enthusiast: You have built or prototyped features with AI technologies (LLMs, Embeddings, ML)
+
+Put users first: You think critically about the implications of what you're building, and how it shapes real people's lives. You understand that reach comes with responsibility for our impact—good and bad.
+
+Not ideological about technology: To you, technologies and programming languages are about tradeoffs. You may be opinionated, but you're not ideological and can learn new technologies as you go.
+
+Empathetic communication: You communicate nuanced ideas clearly, whether you're explaining technical decisions in writing or brainstorming in real time. In disagreements, you engage thoughtfully with other perspectives and compromise when needed.
+
+Team player: For you, work isn't a solo endeavor. You enjoy collaborating cross-functionally to accomplish shared goals, and you care about learning, growing, and helping others to do the same.
+
+Nice to Haves:
+You have expertise with specific technologies that are part of our stack, including Typescript, React, Python.
+
+You've heard of computing pioneers like Ada Lovelace, Douglas Engelbart, Alan Kay, and others—and understand why we're big fans of their work.
+
+You have interests outside of technology, such as in art, history, or social sciences.
+"""
 
 # ---------- prompts ----------
-RESUME_PROMPT = """You are a skill-extraction agent for ANY profession.
+ATS_PROMPT = """You are an expert ATS (Applicant Tracking System) analyst.
+Given a resume and a job description, provide a concise analysis and a score.
 Return STRICT JSON only.
 {
-  "skills": ["string"],
-  "years_experience_estimate": 0.0,
-  "seniority_indicators": ["string"],
-  "meta": { "has_contact": true, "has_sections": true }
-}"""
-
-JD_PROMPT = """You are a job-requirement extraction agent.
-Return STRICT JSON only.
-{
-  "required_skills": ["string"],
-  "priority": {"skill": 1},
-  "seniority_required": "intern|junior|mid|senior|lead|manager|director|vp|cxo",
-  "role_title": "string"
-}"""
-
-app = Flask(__name__, template_folder="templates")
+  "summary": "A brief summary of how well the resume matches the job description.",
+  "score": "A score out of 10, formatted as '<score>/10'.",
+  "missing_keywords": ["list of important keywords from the job description that are missing in the resume"]
+}
+"""
 
 # ---------- helpers ----------
-def is_pdf(file_storage) -> bool:
-    ctype = (file_storage.mimetype or "").lower()
-    if ctype in ALLOWED_MIME:
-        return True
-    head = file_storage.stream.read(5)
-    file_storage.stream.seek(0)
-    return head == b"%PDF-"
-
 def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         text = "\n".join([p.get_text("text") for p in doc])
@@ -79,7 +92,7 @@ def llm_json(model: ModelInference, system_prompt: str, user_text: str, max_toke
         GenTextParamsMetaNames.TEMPERATURE: 0.2,
         GenTextParamsMetaNames.DECODING_METHOD: "greedy",
     }
-    prompt = f"{system_prompt}\n\n=== INPUT START ===\n{user_text}\n=== INPUT END ==="
+    prompt = f"{system_prompt}\n\n=== INPUT START ===\n{user_text}\n=== INPUT END ===="
 
     out = model.generate_text(prompt=prompt, params=params)
 
@@ -96,123 +109,47 @@ def llm_json(model: ModelInference, system_prompt: str, user_text: str, max_toke
     except Exception:
         return {}
 
-def normalize(s: str) -> str:
-    s = s.lower().strip()
-    return re.sub(r'[^a-z0-9+\-#./ ]', '', s)
+def find_latest_resume(directory="."):
+    pdfs = glob.glob(os.path.join(directory, "*.pdf"))
+    if not pdfs:
+        return None
+    latest_pdf = max(pdfs, key=os.path.getmtime)
+    return latest_pdf
 
-def seniority_bucket(indicators):
-    joined = " ".join(indicators).lower()
-    if any(k in joined for k in ["director","head","vp","chief","cxo"]): return "director"
-    if any(k in joined for k in ["lead","manager"]): return "manager"
-    if "senior" in joined: return "senior"
-    if any(k in joined for k in ["intern","trainee"]): return "intern"
-    return "mid"
+def main():
+    print("Finding the latest resume...")
+    resume_path = find_latest_resume()
+    if not resume_path:
+        print("No PDF resume found in the directory.")
+        return
 
-def fuzzy_coverage(resume_skills, jd_skills, cutoff=85):
-    r = [normalize(x) for x in resume_skills]
-    j = [normalize(x) for x in jd_skills]
-    matches, gaps = [], []
-    for js in j:
-        found = process.extractOne(js, r, scorer=fuzz.token_set_ratio)
-        if found is None:
-            gaps.append(js); continue
-        match, score, _ = found
-        if score >= cutoff: matches.append((js, match, score))
-        else: gaps.append(js)
-    return matches, gaps
+    print(f"Found resume: {resume_path}")
 
-def score_ats(matches, gaps, jd_priority, resume_meta, resume_sen, jd_sen):
-    ladder = ["intern","junior","mid","senior","manager","director","vp","cxo"]
-    idx = lambda x: ladder.index(x) if x in ladder else 2
-
-    all_needed = set(list(jd_priority.keys()) + gaps)
-    total_w = sum(jd_priority.get(k,1) for k in all_needed) or 1
-    matched_w = sum(jd_priority.get(m[0],1) for m in matches)
-    coverage_pct = matched_w / total_w
-    coverage_pts = 6.0 * coverage_pct
-
-    diff = abs(idx(resume_sen) - idx(jd_sen))
-    seniority_pts = max(0.0, 2.0 - 0.7 * diff)
-
-    fmt_pts = (1.0 if resume_meta.get("has_contact") else 0.0) + (1.0 if resume_meta.get("has_sections") else 0.0)
-
-    score10 = round(min(10.0, coverage_pts + seniority_pts + fmt_pts), 2)
-    return score10
-
-def get_sheet_agent() -> SpreadsheetAgent:
-    mode = os.getenv("LOG_MODE", "csv").lower()
-    if mode == "gsheets":
-        return SpreadsheetAgent(
-            mode="gsheets",
-            gsa_json_path=os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"),
-            gsheet_id=os.getenv("GOOGLE_SHEET_ID"),
-            worksheet_name=os.getenv("GOOGLE_WORKSHEET", "Sheet1"),
-            debug=True,
-        )
-    return SpreadsheetAgent(
-        mode="csv",
-        csv_path=os.getenv("CSV_LOG_PATH", "logs/applications.csv"),
-        debug=True,
-    )
-
-# ---------- routes ----------
-@app.route("/", methods=["GET"])
-def home():
-    return render_template("index.html")
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"ok": True})
-
-@app.route("/score", methods=["POST"])
-def score():
-    if "resume_pdf" not in request.files or "jd_text" not in request.form:
-        return "resume_pdf file and jd_text are required", 400
-
-    file = request.files["resume_pdf"]
-    if not is_pdf(file):
-        return "Please upload a valid PDF file", 400
-
-    file.seek(0, os.SEEK_END)
-    size = file.tell()
-    file.seek(0)
-    if size > MAX_PDF_BYTES:
-        return f"PDF too large. Max {MAX_PDF_BYTES//(1024*1024)} MB", 413
-
-    pdf_bytes = file.read()
-    jd_text = (request.form.get("jd_text") or "").strip()
+    with open(resume_path, "rb") as f:
+        pdf_bytes = f.read()
 
     resume_text = extract_text_from_pdf_bytes(pdf_bytes)
+    jd_text = JOB_DESCRIPTION.strip()
+
+    print("Initializing model...")
     model = init_model()
-    r_json = llm_json(model, RESUME_PROMPT, resume_text)
-    j_json = llm_json(model, JD_PROMPT, jd_text)
 
-    r_skills = r_json.get("skills", [])
-    r_meta = r_json.get("meta", {"has_contact": False, "has_sections": False})
-    r_sen = seniority_bucket(r_json.get("seniority_indicators", []))
+    print("Analyzing resume against job description...")
+    ats_prompt_input = f"=== RESUME ===\n{resume_text}\n\n=== JOB DESCRIPTION ===\n{jd_text}"
+    ats_result = llm_json(model, ATS_PROMPT, ats_prompt_input, max_tokens=500)
 
-    jd_skills = j_json.get("required_skills", [])
-    jd_priority = j_json.get("priority", {}) or {}
-    jd_role = j_json.get("role_title", "Unknown Role")
-    jd_sen = j_json.get("seniority_required", "mid")
+    summary = ats_result.get("summary", "No summary available.")
+    score_val = ats_result.get("score", "0/10")
+    missing = ats_result.get("missing_keywords", [])
 
-    matches, gaps = fuzzy_coverage(r_skills, jd_skills)
-    score10 = score_ats(matches, gaps, jd_priority, r_meta, r_sen, jd_sen)
-
-    # Optional spreadsheet log
-    company = (request.form.get("company") or "").strip()
-    locations = request.form.get("locations") or ""
-    if company:
-        try:
-            agent = get_sheet_agent()
-            agent.append(company=company, position=jd_role, locations=locations, ats_score=score10)
-        except Exception as e:
-            print("Logging failed:", e)
-
-    return f"Your ATS Score is: {score10}/10"
+    print("\n--- ATS Analysis ---")
+    print(f"Score: {score_val}")
+    print(f"Summary: {summary}")
+    if missing:
+        print("Missing Keywords:")
+        for keyword in missing:
+            print(f"- {keyword}")
+    print("--------------------")
 
 if __name__ == "__main__":
-    app.config["MAX_CONTENT_LENGTH"] = MAX_PDF_BYTES + 64 * 1024
-    port = int(os.getenv("PORT", "8000"))
-    app.run(debug=True, host="127.0.0.1", port=port)
-
+    main()
