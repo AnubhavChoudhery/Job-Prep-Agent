@@ -1,8 +1,11 @@
 import requests
 import os
-import pandas as pd
+from app import init_model, llm_json
 
-API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
+from bs4 import BeautifulSoup
+from pathlib import Path
+import re
+from dotenv import load_dotenv
 
 def get_linkedin_jobs(role, location):
     url = "https://api.scrapingdog.com/linkedinjobs"
@@ -35,19 +38,49 @@ def get_linkedin_jobs(role, location):
         print(f"Error: {e}")
         return []
 
+def get_jd(url: str):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching URL: {e}")
+        return
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    job_text = soup.get_text()
+    job_text = re.sub(r'[ \t]+', ' ', job_text).strip()
+    model = init_model()
+    summary_result = llm_json(model, SUMMARIZE_JD_PROMPT, job_text, max_tokens=2000)
+    
+    summary = summary_result.get("summary", "Could not generate summary.")
+    return summary
+
 if __name__ == "__main__":
+    load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
+
+    WATSONX_API_KEY = os.getenv("WATSONX_API_KEY")
+    WATSONX_URL = os.getenv("WATSONX_URL")
+    WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID")
+    WATSONX_MODEL_ID = os.getenv("WATSONX_MODEL_ID")
+    API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
+
+    SUMMARIZE_JD_PROMPT = """You are an expert job description summarizer.
+    Given the text from a job posting page, extract and provide a concise summary of the key responsibilities and qualifications.
+    Return STRICT JSON only.
+    {
+    "summary": "A brief summary of the job description."    
+    }
+    """ 
+
     role = "Software Engineering Intern"
     location = "Ireland"
-    
     jobs = get_linkedin_jobs(role, location)
     
     if jobs:
-        df = pd.DataFrame(jobs)
-        df.to_excel("linkedin_jobs_test.xlsx", index=False)
-        
-        # Show the jobs found
-        print("\nJobs found:")
-        for i, job in enumerate(jobs, 1):
-            print(f"{i}. {job['title']} at {job['company']}")
+        summaries = []
+        for job in jobs:
+            if job.get('job_link'):
+                summaries.append(get_jd(job['job_link']))
+        print(summaries)
     else:
         print("No jobs found")
