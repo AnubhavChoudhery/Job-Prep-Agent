@@ -1,7 +1,9 @@
 import os, re, json, glob
 from pathlib import Path
 from dotenv import load_dotenv
+from scrape import get_jd, get_linkedin_jobs
 import fitz  
+import pandas as pd
 
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
@@ -57,44 +59,11 @@ def main():
     WATSONX_URL = os.getenv("WATSONX_URL")
     WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID")
     WATSONX_MODEL_ID = os.getenv("WATSONX_MODEL_ID")
-
-    JOB_DESCRIPTION = """
-Qualifications:
-Pursuing a bachelor's or master's degree in computer science, engineering, or another related field. Must graduate before July 2027.
-
-Previous internship experience.
-
-Working towards a proficiency of one or more programming languages such as Typescript, Node.js, or Python.
-
-You find large challenges exciting and enjoy discovering problems as much as solving them.
-
-You are able to problem-solve and adapt to changing priorities in a fast-paced, dynamic environment.
-
-This internship will take place from May - September (based on your summer schedule) and you will need to be able to work out of our NY or SF office during this time.
-
-Skills You'll Need To Bring:
-Thoughtful problem-solving: For you, problem-solving starts with a clear and accurate understanding of the context. You can decompose tricky problems and work towards a clean solution, by yourself or with teammates. You're comfortable asking for help when you get stuck.
-
-AI enthusiast: You have built or prototyped features with AI technologies (LLMs, Embeddings, ML)
-
-Put users first: You think critically about the implications of what you're building, and how it shapes real people's lives. You understand that reach comes with responsibility for our impact—good and bad.
-
-Not ideological about technology: To you, technologies and programming languages are about tradeoffs. You may be opinionated, but you're not ideological and can learn new technologies as you go.
-
-Empathetic communication: You communicate nuanced ideas clearly, whether you're explaining technical decisions in writing or brainstorming in real time. In disagreements, you engage thoughtfully with other perspectives and compromise when needed.
-
-Team player: For you, work isn't a solo endeavor. You enjoy collaborating cross-functionally to accomplish shared goals, and you care about learning, growing, and helping others to do the same.
-
-Nice to Haves:
-You have expertise with specific technologies that are part of our stack, including Typescript, React, Python.
-
-You've heard of computing pioneers like Ada Lovelace, Douglas Engelbart, Alan Kay, and others—and understand why we're big fans of their work.
-
-You have interests outside of technology, such as in art, history, or social sciences.
-"""
+    API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
 
     ATS_PROMPT = """You are an expert ATS (Applicant Tracking System) analyst.
 Given a resume and a job description, provide a concise analysis and a score.
+Be completely honest with scoring so that the user gets a relaistic idea of their match with the position.
 Return STRICT JSON only.
 {
   "summary": "A brief summary of how well the resume matches the job description.",
@@ -102,6 +71,13 @@ Return STRICT JSON only.
   "missing_keywords": ["list of important keywords from the job description that are missing in the resume"]
 }
 """
+    SUMMARIZE_JD_PROMPT = """You are an expert job description summarizer.
+    Given the text from a job posting page, extract and provide a concise summary of the key responsibilities and qualifications.
+    Return STRICT JSON only.
+    {
+    "summary": "A brief summary of the job description."    
+    }
+    """ 
 
     resume_path = find_latest_resume()
     if not resume_path:
@@ -110,23 +86,37 @@ Return STRICT JSON only.
 
     with open(resume_path, "rb") as f:
         pdf_bytes = f.read()
-
     resume_text = extract_text_from_pdf_bytes(pdf_bytes)
-    jd_text = JOB_DESCRIPTION.strip()
 
     print("Initializing model...")
     model = init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID)
 
-    ats_prompt_input = f"=== RESUME ===\n{resume_text}\n\n=== JOB DESCRIPTION ===\n{jd_text}"
-    ats_result = llm_json(model, ATS_PROMPT, ats_prompt_input, max_tokens=500)
+    role = "Software Engineering Intern"
+    location = "Ireland"
+    jobs = get_linkedin_jobs(role, location, API_KEY)
+    summaries = []
+    if jobs:
+        for job in jobs:
+            if job.get('job_link'):
+                summaries.append(get_jd(job['job_link'], WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID, SUMMARIZE_JD_PROMPT))
+        print("Fetched respective job descriptions...")
+    else:
+        print("No jobs found")
 
-    summary = ats_result.get("summary", "No summary available.")
-    score_val = ats_result.get("score", "0/10")
-    missing = ats_result.get("missing_keywords", [])
+    print("Scoring now...")
+    for i in range(len(summaries)):
+        jd = summaries[i]
+        ats_prompt_input = f"=== RESUME ===\n{resume_text}\n\n=== JOB DESCRIPTION ===\n{jd}"
+        ats_result = llm_json(model, ATS_PROMPT, ats_prompt_input, max_tokens=500)
 
-    print("\n--- ATS Analysis ---")
-    print(f"Score: {score_val}")
-    print(f"Summary: {summary}")
+        summary = ats_result.get("summary", "No summary available.")
+        score = ats_result.get("score", "Undetermined")
+        missing = ats_result.get("missing_keywords", [])
+
+        jobs[i]["ats_score"] = score
+    df = pd.DataFrame(jobs)
+    df.to_excel("jobs.xlsx")
+    print("Final results saved to jobs.xlsx, good luck with the job hunt!")
 
 if __name__ == "__main__":
     main()
