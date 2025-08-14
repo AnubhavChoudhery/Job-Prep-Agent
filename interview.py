@@ -3,6 +3,8 @@ import time
 from typing import Dict, List
 from dataclasses import dataclass
 from transformers import BartForConditionalGeneration, BartTokenizer
+from dotenv import load_dotenv
+from pathlib import Path
 import torch
 import praw
 import os
@@ -362,9 +364,10 @@ def generate_job_insights(
     return insights
 
 # Initialize Reddit API
+load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
 reddit = praw.Reddit(
-    client_id=os.getenv('REDDIT_CLIENT_ID'),
-    client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
+    client_id=os.getenv('CLIENT_ID'),
+    client_secret=os.getenv('CLIENT_SECRET'),
     user_agent=os.getenv('REDDIT_USER_AGENT')
 )
 
