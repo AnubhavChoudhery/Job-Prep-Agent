@@ -1,5 +1,4 @@
 import requests
-import json
 from docx import Document
 from datetime import datetime
 from dotenv import load_dotenv
@@ -8,6 +7,7 @@ from pathlib import Path
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
+from location import get_location
 
 def init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID) -> ModelInference:
     creds = Credentials(url=WATSONX_URL, api_key=WATSONX_API_KEY)
@@ -46,13 +46,13 @@ def search(position, company, code, api_key, url):
         "query": query_text,
         "country": code
     }
-    print(f"[INFO] Searching for: {query_text}")
+    print(f"Searching for: {query_text}")
     response = requests.get(url, params=params)
     
     if response.status_code == 200:
         return response
     else:
-        raise RuntimeError(f"Scrapingdog request failed ({response.status_code})")
+        raise RuntimeError(f"Scraping request failed ({response.status_code})")
 
 def extract_text(response):
     """Extract readable text content from the API response"""
@@ -95,7 +95,8 @@ def summarize_content(model, content):
     
     KEY TAKEAWAYS
     • [Important insights and final advice]
-    Make sure to be comprehensive and specific based on the provided content."""
+    Make sure to be comprehensive and specific based on the provided content.,
+    diving as deep as possible into specifics at each step"""
     
     try:
         result = generate_text(model, QA_PROMPT, content, max_tokens=2000)
@@ -133,7 +134,7 @@ def qa_pipeline():
     WATSONX_MODEL_ID = os.getenv("WATSONX_MODEL_ID")
     
     SCRAPINGDOG_URL = "https://api.scrapingdog.com/google/ai_mode"
-    COUNTRY_CODE = "us"
+    COUNTRY_CODE = get_location()
     
     position = "Software Engineering Intern"
     company = "Google"
@@ -157,5 +158,5 @@ def qa_pipeline():
     except Exception as e:
         print(f"{e}")
 
-if __name__ == "main":
+if __name__ == "__main__":
     qa_pipeline()
