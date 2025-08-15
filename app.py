@@ -95,7 +95,10 @@ def main():
 
     role = "Software Engineering Intern"
     location = "USA"
-    jobs = get_linkedin_jobs(role, location, API_KEY)
+    jobs = []
+    pages = 3
+    for i in range(1, pages+1):
+        jobs += get_linkedin_jobs(role, location, API_KEY, i)
     summaries = []
     if jobs:
         for job in jobs:
