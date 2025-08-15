@@ -117,7 +117,7 @@ def main():
         position, company = job["title"], job["company"]
         job_title = f"{position} at {company}"
         if job_title not in cache:
-            qa_pipeline(position, company)
+            qa_pipeline(position, company, jd)
             cache.append(job_title)
 
     df = pd.DataFrame(jobs)
