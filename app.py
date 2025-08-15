@@ -1,7 +1,10 @@
+import warnings
 import os, re, json, glob
 from pathlib import Path
+from datetime import datetime
 from dotenv import load_dotenv
 from scrape import get_jd, get_linkedin_jobs
+from interview import qa_pipeline
 import fitz  
 import pandas as pd
 
@@ -9,6 +12,7 @@ from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
 
+warnings.filterwarnings("ignore")
 def extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         text = "\n".join([p.get_text("text") for p in doc])
@@ -62,15 +66,13 @@ def main():
     API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
 
     ATS_PROMPT = """You are an expert ATS (Applicant Tracking System) analyst.
-Given a resume and a job description, provide a concise analysis and a score.
-Be completely honest with scoring so that the user gets a relaistic idea of their match with the position.
-Return STRICT JSON only.
-{
-  "summary": "A brief summary of how well the resume matches the job description.",
-  "score": "A score out of 10, formatted as '<score>/10'.",
-  "missing_keywords": ["list of important keywords from the job description that are missing in the resume"]
-}
-"""
+    Given a resume and a job description, provide a concise analysis and a score.
+    Be completely honest with scoring so that the user gets a relaistic idea of their match with the position.
+    Return STRICT JSON only.
+    {
+    "score": "A score out of 10, formatted as '<score>/10'.",
+    }
+    """
     SUMMARIZE_JD_PROMPT = """You are an expert job description summarizer.
     Given the text from a job posting page, extract and provide a concise summary of the key responsibilities and qualifications.
     Return STRICT JSON only.
@@ -92,7 +94,7 @@ Return STRICT JSON only.
     model = init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID)
 
     role = "Software Engineering Intern"
-    location = "Ireland"
+    location = "USA"
     jobs = get_linkedin_jobs(role, location, API_KEY)
     summaries = []
     if jobs:
@@ -102,21 +104,28 @@ Return STRICT JSON only.
         print("Fetched respective job descriptions...")
     else:
         print("No jobs found")
+        exit(1)
 
-    print("Scoring now...")
+    print("Scoring and generating interview documents...")
+    cache = []
     for i in range(len(summaries)):
-        jd = summaries[i]
+        jd, job = summaries[i], jobs[i]
         ats_prompt_input = f"=== RESUME ===\n{resume_text}\n\n=== JOB DESCRIPTION ===\n{jd}"
-        ats_result = llm_json(model, ATS_PROMPT, ats_prompt_input, max_tokens=500)
-
-        summary = ats_result.get("summary", "No summary available.")
+        ats_result = llm_json(model, ATS_PROMPT, ats_prompt_input, max_tokens=100)
         score = ats_result.get("score", "Undetermined")
-        missing = ats_result.get("missing_keywords", [])
+        job["ats_score"] = score
+        position, company = job["title"], job["company"]
+        job_title = f"{position} at {company}"
+        if job_title not in cache:
+            qa_pipeline(position, company)
+            cache.append(job_title)
 
-        jobs[i]["ats_score"] = score
     df = pd.DataFrame(jobs)
-    df.to_excel("jobs.xlsx")
-    print("Final results saved to jobs.xlsx, good luck with the job hunt!")
+    sorted_df = df.sort_values(by="ats_score", ascending=False)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"jobs_{timestamp}.xlsx"
+    sorted_df.to_excel(filename, index=False)
+    print(f"Final results saved to {filename}, good luck with the job hunt!")
 
 if __name__ == "__main__":
     main()
