@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
+import warnings
 
+warnings.filterwarnings("ignore")
 def init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID) -> ModelInference:
     creds = Credentials(url=WATSONX_URL, api_key=WATSONX_API_KEY)
     return ModelInference(
