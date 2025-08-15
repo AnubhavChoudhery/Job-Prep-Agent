@@ -3,12 +3,15 @@ from docx import Document
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import re
 from pathlib import Path
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
 from location import get_location
+import warnings
 
+warnings.filterwarnings("ignore")
 def init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID) -> ModelInference:
     creds = Credentials(url=WATSONX_URL, api_key=WATSONX_API_KEY)
     return ModelInference(
@@ -105,6 +108,10 @@ def summarize_content(model, content):
         print(f"{e}")
         exit(1)
 
+def sanitize_filename(filename):
+    """Remove invalid characters from a filename."""
+    return re.sub(r'[\\/:*?"<>|()]', '', filename)
+
 def save_to_word(position, company, summary_text):
     """Save the summarized text to a Word document."""
     if not summary_text or summary_text.strip() == "":
@@ -121,11 +128,13 @@ def save_to_word(position, company, summary_text):
         if para.strip():
             doc.add_paragraph(para.strip())
     
-    filename = f"{company}_{position.replace(' ', '_')}_Interview_{datetime.now().strftime('%Y%m%d_%H%M')}.docx"
-    doc.save(filename)
-    print(f"Document saved: {filename}")
+    base_filename = f"{company}_{position.replace(' ', '_')}_Interview_{datetime.now().strftime('%Y%m%d_%H%M')}"
+    sanitized_filename = sanitize_filename(base_filename) + ".docx"
+    
+    doc.save(sanitized_filename)
+    print(f"Document saved: {sanitized_filename}")
 
-def qa_pipeline():
+def qa_pipeline(position, company):
     load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
     API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
     WATSONX_API_KEY = os.getenv("WATSONX_API_KEY")
@@ -135,9 +144,6 @@ def qa_pipeline():
     
     SCRAPINGDOG_URL = "https://api.scrapingdog.com/google/ai_mode"
     COUNTRY_CODE = get_location()
-    
-    position = "Software Engineering Intern"
-    company = "Google"
     
     try:
         search_results = search(position, company, COUNTRY_CODE, API_KEY, SCRAPINGDOG_URL)
