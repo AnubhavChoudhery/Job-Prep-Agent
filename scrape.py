@@ -42,13 +42,13 @@ def llm_json(model: ModelInference, system_prompt: str, user_text: str, max_toke
     except Exception:
         return {}
 
-def get_linkedin_jobs(role, location, API_KEY):
+def get_linkedin_jobs(role, location, API_KEY, page):
     url = "https://api.scrapingdog.com/linkedinjobs"
     params = {
         "api_key": API_KEY,
         "field": role,
         "location": location,
-        "page": 1
+        "page": page
     }
     
     try:
@@ -109,14 +109,16 @@ if __name__ == "__main__":
     """ 
 
     role = "Software Engineering Intern"
-    location = "Ireland"
-    jobs = get_linkedin_jobs(role, location, API_KEY)
-    
+    location = "USA"
+    pages = 3
+    jobs = []
+    for i in range(1, pages+1):
+        jobs += get_linkedin_jobs(role, location, API_KEY, i)
     if jobs:
         summaries = []
         for job in jobs:
             if job.get('job_link'):
                 summaries.append(get_jd(job['job_link'], WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID, SUMMARIZE_JD_PROMPT))
-        print(summaries)
+        print(len(jobs))
     else:
         print("No jobs found")
