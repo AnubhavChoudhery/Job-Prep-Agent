@@ -76,7 +76,7 @@ def extract_text(response):
         print(f"{e}")
         return str(response.text)
 
-def summarize_content(model, content):
+def summarize_content(model, content, jd):
     QA_PROMPT = """You are an expert career guide tasked with summarizing interview experiences.
     Extract key points from the provided data to generate a detailed and well-structured document.
     
@@ -102,7 +102,10 @@ def summarize_content(model, content):
     diving as deep as possible into specifics at each step"""
     
     try:
-        result = generate_text(model, QA_PROMPT, content, max_tokens=2000)
+        if content:
+            result = generate_text(model, QA_PROMPT, content, max_tokens=2000)
+        else:
+            result = generate_text(model, QA_PROMPT, jd, max_tokens=2000)
         return result
     except Exception as e:
         print(f"{e}")
@@ -134,7 +137,7 @@ def save_to_word(position, company, summary_text):
     doc.save(sanitized_filename)
     print(f"Document saved: {sanitized_filename}")
 
-def qa_pipeline(position, company):
+def qa_pipeline(position, company, jd):
     load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
     API_KEY = os.getenv("SCRAPINGDOG_API_KEY")
     WATSONX_API_KEY = os.getenv("WATSONX_API_KEY")
@@ -151,15 +154,13 @@ def qa_pipeline(position, company):
         
         if not extracted_text:
             print("No text content extracted from search results")
-            exit(1)
         model = init_model(WATSONX_URL, WATSONX_API_KEY, WATSONX_PROJECT_ID, WATSONX_MODEL_ID)
-        summary = summarize_content(model, extracted_text)
+        summary = summarize_content(model, extracted_text, jd)
         
         if summary:
             save_to_word(position, company, summary)
         else:
             print("No summary generated")
-            exit(1)
             
     except Exception as e:
         print(f"{e}")
