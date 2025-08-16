@@ -9,9 +9,9 @@ from interview import qa_pipeline
 import fitz  
 import pandas as pd
 import tempfile
-import shutil
+from math import ceil
 import zipfile
-from typing import List, Tuple, Optional
+from typing import List
 
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
@@ -19,10 +19,8 @@ from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
 
 warnings.filterwarnings("ignore")
 
-# Load environment variables
 load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
 
-# Global configuration
 WATSONX_API_KEY = os.getenv("WATSONX_API_KEY")
 WATSONX_URL = os.getenv("WATSONX_URL")
 WATSONX_PROJECT_ID = os.getenv("WATSONX_PROJECT_ID")
@@ -90,9 +88,7 @@ def fetch_jobs(role: str, location: str, num_jobs: int, progress_callback=None) 
     if progress_callback:
         progress_callback(0.3, desc="Searching for jobs...")
     
-    # Calculate pages needed to get approximately num_jobs
-     # Typical jobs per page
-    pages = 1
+    pages = ceil(num_jobs/10)*10
     
     jobs = []
     for i in range(1, pages + 1):
@@ -277,16 +273,16 @@ def process_and_update(resume_file, role_input, location_input, num_jobs_input):
     zip_visible = zip_file is not None
     
     return (
-        message,  # status_output
-        gr.update(value=excel_file, visible=excel_visible),  # excel_download
-        gr.update(value=zip_file, visible=zip_visible)  # documents_download
+        message,  
+        gr.update(value=excel_file, visible=excel_visible),  
+        gr.update(value=zip_file, visible=zip_visible)  
     )
 
 def create_interface():
     """Create and configure Gradio interface"""
-    with gr.Blocks(title="Job Application Pipeline", theme=gr.themes.Soft()) as app:
+    with gr.Blocks(title="Job Search Assistant", theme=gr.themes.Soft()) as app:
         gr.Markdown("""
-        # 🚀 AI-Powered Job Application Pipeline
+        # AI-Powered Job Search Assistant
         
         Upload your resume, specify your target role and location, and get AI-powered job matching with interview preparation documents!
         
@@ -321,7 +317,7 @@ def create_interface():
                 
                 num_jobs_input = gr.Slider(
                     minimum=5,
-                    maximum=50,
+                    maximum=500,
                     step=5,
                     value=15,
                     label="Number of Jobs to Analyze"
@@ -365,7 +361,7 @@ def create_interface():
         - Try different locations to expand your search
         - The system will generate interview prep documents for unique company-role combinations
         
-        ### 🔧 Features:
+        ### Features:
         - **ATS Scoring**: Get realistic compatibility scores for each job
         - **Smart Ranking**: Jobs sorted by ATS score (best matches first)
         - **Interview Prep**: Customized documents with company-specific interview insights
@@ -396,7 +392,7 @@ def main():
     app = create_interface()
     app.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=8000,
         share=True,  
         show_api=False
     )
