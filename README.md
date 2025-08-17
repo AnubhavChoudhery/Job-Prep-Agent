@@ -148,13 +148,6 @@ job-application-pipeline/
 └── README.md             # This file
 ```
 
-##  Privacy & Security
-
-- All processing is done locally on your machine
-- Resume data is not stored permanently
-- Temporary files are cleaned up after processing
-- API calls are made securely with your credentials
-
 ##  Contributing
 
 Feel free to submit issues, feature requests, or pull requests to improve the application.
@@ -173,4 +166,3 @@ For issues or questions:
 
 ---
 
-**Happy job hunting! **
