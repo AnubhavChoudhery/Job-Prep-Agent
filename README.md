@@ -4,13 +4,13 @@ A comprehensive web application that helps job seekers find, analyze, and prepar
 
 ##  Features
 
-- ** Resume Analysis**: Upload your PDF resume for AI-powered job matching
-- ** Smart Job Search**: Search LinkedIn jobs by role and location
-- ** ATS Scoring**: Get realistic compatibility scores (1-10) for each job
-- ** Smart Ranking**: Jobs automatically sorted by best match first
-- ** Interview Preparation**: Auto-generated interview prep documents for each company
-- ** Export Ready**: Download Excel reports and ZIP files with all documents
-- ** Web Interface**: Easy-to-use Gradio interface accessible from any browser
+- Resume Analysis: Upload your PDF resume for AI-powered job matching
+- Smart Job Search: Search LinkedIn jobs by role and location
+- ATS Scoring: Get realistic compatibility scores (1-10) for each job
+- Smart Ranking: Jobs automatically sorted by best match first
+- Interview Preparation: Auto-generated interview prep documents for each company
+- Export Ready: Download Excel reports and ZIP files with all documents
+- Web Interface: Easy-to-use Gradio interface accessible from any browser
 
 ##  Setup Instructions
 
@@ -48,15 +48,8 @@ A comprehensive web application that helps job seekers find, analyze, and prepar
    ```
 
 5. **Access the web interface:**
-   - Local: `http://localhost:7860`
+   - Local: `http://localhost:7860` (or any other port e.g. 8000)
    - Public link will be displayed in the terminal
-
-### Alternative Setup (Using setup script)
-
-```bash
-chmod +x setup.sh
-./setup.sh
-```
 
 ##  How to Use
 
@@ -65,9 +58,9 @@ chmod +x setup.sh
 - Ensure it's well-formatted for best AI analysis
 
 ### Step 2: Specify Search Parameters
-- **Job Role**: Enter the position you're looking for (e.g., "Software Engineer", "Data Scientist")
-- **Location**: Specify location or "Remote" (e.g., "USA", "Canada", "Ireland")
-- **Number of Jobs**: Choose how many jobs to analyze (5-50)
+- Job Role: Enter the position you're looking for (e.g., "Software Engineer", "Data Scientist")
+- Location: Specify location or "Remote" (e.g., "USA", "Canada", "Ireland")
+- Number of Jobs: Choose how many jobs to analyze (steps of 5)
 
 ### Step 3: Start Analysis
 - Click "Start Job Search & Analysis"
@@ -75,8 +68,8 @@ chmod +x setup.sh
 - Process typically takes 2-5 minutes depending on number of jobs
 
 ### Step 4: Download Results
-- **Excel Report**: Complete job listing with ATS scores, sorted by best matches
-- **Interview Documents**: ZIP file containing Word documents with company-specific interview preparation
+- Excel Report: Complete job listing with ATS scores, sorted by best matches
+- Interview Documents: ZIP file containing Word documents with company-specific interview preparation
 
 ##  Output Files
 
@@ -85,7 +78,7 @@ Contains columns:
 - Job title and company
 - Location and job link
 - Posted date
-- **ATS Score** (X/10 format)
+- ATS Score (X/10 format)
 - Sorted by score (best matches first)
 
 ### Interview Documents (DOCX)
@@ -111,26 +104,26 @@ Each document includes:
 ### Customization
 
 You can modify the following in `web_app.py`:
-- **ATS_PROMPT**: Customize how jobs are scored
-- **SUMMARIZE_JD_PROMPT**: Adjust job description summarization
-- **Default values**: Change default role, location, or job count
-- **UI theme**: Modify the Gradio theme
+- ATS_PROMPT: Customize how jobs are scored
+- SUMMARIZE_JD_PROMPT: Adjust job description summarization
+- Default values: Change default role, location, or job count
+- UI theme: Modify the Gradio theme
 
 ##  Troubleshooting
 
 ### Common Issues
 
-1. **"No jobs found"**
+1. "No jobs found"
    - Try broader job role terms
    - Check if location is spelled correctly
    - Verify ScrapingDog API key is working
 
-2. **"Error processing jobs"**
+2. "Error processing jobs"
    - Check Watson X AI credentials
    - Ensure all environment variables are set
    - Verify internet connection
 
-3. **PDF upload issues**
+3. PDF upload issues
    - Ensure file is actually a PDF
    - Check file isn't corrupted
    - Try with a simpler PDF format
@@ -168,7 +161,7 @@ Feel free to submit issues, feature requests, or pull requests to improve the ap
 
 ##  License
 
-This project is open source. Please ensure you comply with the terms of service for all APIs used (Watson X AI, ScrapingDog, etc.).
+This project is open source under the MIT License. Please ensure you comply with the terms of service for all APIs used (WatsonX AI, ScrapingDog, etc.).
 
 ## Support
 
