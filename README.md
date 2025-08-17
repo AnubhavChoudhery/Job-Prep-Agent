@@ -151,6 +151,7 @@ job-application-pipeline/
 ##  Contributing
 
 Feel free to submit issues, feature requests, or pull requests to improve the application.
+Mail us at anubhavchoudhery95@gmail.com and aadityashankar21@gmail.com
 
 ##  License
 
