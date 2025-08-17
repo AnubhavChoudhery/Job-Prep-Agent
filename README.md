@@ -96,7 +96,7 @@ Each document includes:
 - Preparation tips and recommendations
 - Key takeaways
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
