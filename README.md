@@ -1,18 +1,18 @@
-# 🚀 AI-Powered Job Application Pipeline
+# AI-Powered Job Application Pipeline
 
 A comprehensive web application that helps job seekers find, analyze, and prepare for job opportunities using AI-powered resume matching and interview preparation.
 
 ## ✨ Features
 
-- **📄 Resume Analysis**: Upload your PDF resume for AI-powered job matching
-- **🔍 Smart Job Search**: Search LinkedIn jobs by role and location
-- **📊 ATS Scoring**: Get realistic compatibility scores (1-10) for each job
-- **📈 Smart Ranking**: Jobs automatically sorted by best match first
-- **📋 Interview Preparation**: Auto-generated interview prep documents for each company
-- **📤 Export Ready**: Download Excel reports and ZIP files with all documents
-- **🌐 Web Interface**: Easy-to-use Gradio interface accessible from any browser
+- ** Resume Analysis**: Upload your PDF resume for AI-powered job matching
+- ** Smart Job Search**: Search LinkedIn jobs by role and location
+- ** ATS Scoring**: Get realistic compatibility scores (1-10) for each job
+- ** Smart Ranking**: Jobs automatically sorted by best match first
+- ** Interview Preparation**: Auto-generated interview prep documents for each company
+- ** Export Ready**: Download Excel reports and ZIP files with all documents
+- ** Web Interface**: Easy-to-use Gradio interface accessible from any browser
 
-## 🛠️ Setup Instructions
+##  Setup Instructions
 
 ### Prerequisites
 
@@ -58,7 +58,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-## 🎯 How to Use
+##  How to Use
 
 ### Step 1: Upload Resume
 - Upload your resume in PDF format
@@ -78,7 +78,7 @@ chmod +x setup.sh
 - **Excel Report**: Complete job listing with ATS scores, sorted by best matches
 - **Interview Documents**: ZIP file containing Word documents with company-specific interview preparation
 
-## 📊 Output Files
+##  Output Files
 
 ### Excel Spreadsheet
 Contains columns:
@@ -116,7 +116,7 @@ You can modify the following in `web_app.py`:
 - **Default values**: Change default role, location, or job count
 - **UI theme**: Modify the Gradio theme
 
-## 🚨 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -140,7 +140,7 @@ You can modify the following in `web_app.py`:
 - Watson X AI: Monitor token usage
 - Consider adding delays if hitting rate limits
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 job-application-pipeline/
@@ -155,22 +155,22 @@ job-application-pipeline/
 └── README.md             # This file
 ```
 
-## 🔒 Privacy & Security
+##  Privacy & Security
 
 - All processing is done locally on your machine
 - Resume data is not stored permanently
 - Temporary files are cleaned up after processing
 - API calls are made securely with your credentials
 
-## 🤝 Contributing
+##  Contributing
 
 Feel free to submit issues, feature requests, or pull requests to improve the application.
 
-## 📄 License
+##  License
 
 This project is open source. Please ensure you comply with the terms of service for all APIs used (Watson X AI, ScrapingDog, etc.).
 
-## 🆘 Support
+## Support
 
 For issues or questions:
 1. Check the troubleshooting section above
@@ -180,4 +180,4 @@ For issues or questions:
 
 ---
 
-**Happy job hunting! 🎯**
+**Happy job hunting! **
