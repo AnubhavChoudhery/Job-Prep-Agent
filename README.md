@@ -2,7 +2,7 @@
 
 A comprehensive web application that helps job seekers find, analyze, and prepare for job opportunities using AI-powered resume matching and interview preparation.
 
-## ✨ Features
+##  Features
 
 - ** Resume Analysis**: Upload your PDF resume for AI-powered job matching
 - ** Smart Job Search**: Search LinkedIn jobs by role and location
